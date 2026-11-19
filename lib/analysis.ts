@@ -89,20 +89,35 @@ export function tailorResume(cv:string,job:string,language:string):string {
  if(section.lines.length)sections.push(section);
  if(sections.length<2)return clean;
  const requested=terms.filter(term=>containsTerm(job,term));
- const score=(text:string)=>requested.filter(term=>containsTerm(text,term)).length;
+ const matched=requested.filter(term=>containsTerm(clean,term));
+ const score=(text:string)=>matched.filter(term=>containsTerm(text,term)).length;
  const header=sections.find(s=>s.title==='HEADER');
  const summary=sections.find(s=>/SUMMARY|RESUMO/i.test(s.title));
  const skills=sections.filter(s=>/SKILLS|COMPETÊNCIAS/i.test(s.title));
  const other=sections.filter(s=>s!==header&&s!==summary&&!skills.includes(s));
  const output:string[]=[];
  if(header)output.push(...header.lines,'');
- if(summary)output.push(summary.title,...summary.lines,'');
+ // Create a job-oriented summary using only complete sentences from the original summary.
+ if(summary){
+  const summaryText=summary.lines.join(' ').replace(/\s+/g,' ').trim();
+  const sentences=summaryText.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(s=>s.trim()).filter(Boolean)||[];
+  const ranked=sentences.map((text,i)=>({text,i,score:score(text)}))
+    .sort((a,b)=>b.score-a.score||a.i-b.i);
+  const selected=ranked.filter(s=>s.score>0).slice(0,3);
+  const fallback=ranked.find(s=>s.i===0);
+  const chosen=selected.length?selected:(fallback?[fallback]:[]);
+  output.push(summary.title,...chosen.map(s=>s.text),'');
+ }
+ // The focus block contains only skill labels that also appear in the original resume.
+ if(matched.length){
+  output.push(language==='en'?'RELEVANT SKILLS FOR THIS ROLE':'COMPETÊNCIAS RELEVANTES PARA ESTA VAGA',matched.join(' | '),'');
+ }
  for(const s of skills){
-  const sorted=s.lines.map((line,i)=>({line,i,score:score(line)})).sort((a,b)=>b.score-a.score||a.i-b.i);
-  output.push(s.title,...sorted.map(x=>x.line),'');
+  // Keep lines and categories intact: splitting wrapped PDF lines can corrupt skills.
+  output.push(s.title,...s.lines,'');
  }
  for(const s of other){
-  // Preserve complete experience entries and chronology; do not reorder individual lines.
+  // Keep experience entries, dates and chronology intact, including unrelated jobs.
   output.push(s.title,...s.lines,'');
  }
  return output.join('\n').replace(/\n{3,}/g,'\n\n').trim();
