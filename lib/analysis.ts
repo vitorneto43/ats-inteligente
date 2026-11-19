@@ -6,6 +6,7 @@ export type Analysis = {
   draft: string;
   mode: string;
   scoreAvailable?: boolean;
+  evidence?: string[];
 };
 
 const aliases: Record<string,string[]> = {
@@ -79,7 +80,8 @@ export function localAnalysis(cv: string, job: string): Analysis {
       'Nenhuma experiência ou competência foi acrescentada ao currículo.',
       'Trechos relevantes são citações literais do currículo, não provas de domínio técnico. Remova cabeçalhos de revisão e duplicações antes de enviar.'
     ],
-    draft: examples.length ? ['RELEVANT EXPERIENCE — VERIFY BEFORE SENDING',...examples,'','FULL ORIGINAL RESUME',cv].join('\n') : cv,
+    evidence: examples,
+    draft: cv,
     mode: 'local'
   };
 }
