@@ -73,11 +73,11 @@ function evidence(cv:string,matched:string[]):string[] {
  return scored.filter(x=>x.score>0).sort((a,b)=>b.score-a.score||a.index-b.index).slice(0,5).map(x=>x.line);
 }
 
-const headings=/^(PROFESSIONAL SUMMARY|PROFESSIONAL EXPERIENCE|WORK EXPERIENCE|PROJECTS|SELECTED PROJECTS|EDUCATION|ACADEMIC BACKGROUND|SKILLS|TECHNICAL SKILLS|CERTIFICATIONS|LANGUAGES|AI-ASSISTED DEVELOPMENT METHOD|RESUMO PROFISSIONAL|EXPERIÊNCIA PROFISSIONAL|PROJETOS|FORMAÇÃO|COMPETÊNCIAS|IDIOMAS)\\s*:?$/i;
+const headings=/^(PROFESSIONAL SUMMARY|PROFESSIONAL EXPERIENCE|WORK EXPERIENCE|PROJECTS|SELECTED PROJECTS|EDUCATION|ACADEMIC BACKGROUND|SKILLS|TECHNICAL SKILLS|CERTIFICATIONS|LANGUAGES|AI-ASSISTED DEVELOPMENT METHOD|RESUMO PROFISSIONAL|EXPERIÊNCIA PROFISSIONAL|PROJETOS|FORMAÇÃO|COMPETÊNCIAS|IDIOMAS)\s*:?$/i;
 
 export function tailorResume(cv:string,job:string,language:string):string {
- const clean=cv.replace(/^\\s*\\d{1,3}\\s*$/gm,'').trim();
- const lines=clean.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+ const clean=cv.replace(/^\s*\d{1,3}\s*$/gm,'').trim();
+ const lines=clean.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
  const sections:{title:string;lines:string[]}[]=[];
  let section={title:'HEADER',lines:[] as string[]};
  for(const line of lines){
@@ -105,7 +105,7 @@ export function tailorResume(cv:string,job:string,language:string):string {
   // Preserve complete experience entries and chronology; do not reorder individual lines.
   output.push(s.title,...s.lines,'');
  }
- return output.join('\\n').replace(/\\n{3,}/g,'\\n\\n').trim();
+ return output.join('\n').replace(/\n{3,}/g,'\n\n').trim();
 }
 
 export function localAnalysis(cv: string, job: string): Analysis {
