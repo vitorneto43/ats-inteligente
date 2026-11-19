@@ -94,7 +94,6 @@ export function tailorResume(cv:string,job:string,language:string):string {
  const summary=sections.find(s=>/SUMMARY|RESUMO/i.test(s.title));
  const skills=sections.filter(s=>/SKILLS|COMPETÊNCIAS/i.test(s.title));
  const other=sections.filter(s=>s!==header&&s!==summary&&!skills.includes(s));
- const projectSection=(s:{title:string;lines:string[]})=>/PROJECT|PROJET|EXPERIENCE|EXPERIÊNCIA/i.test(s.title);
  const output:string[]=[];
  if(header)output.push(...header.lines,'');
  if(summary)output.push(summary.title,...summary.lines,'');
@@ -105,12 +104,6 @@ export function tailorResume(cv:string,job:string,language:string):string {
  for(const s of other){
   // Preserve complete experience entries and chronology; do not reorder individual lines.
   output.push(s.title,...s.lines,'');
- }
- const relevant=other.filter(projectSection).flatMap(s=>s.lines).filter(line=>score(line)>0).slice(0,5);
- if(relevant.length){
-  const label=language==='en'?'RELEVANT EVIDENCE FROM ORIGINAL RESUME':'EVIDÊNCIAS RELEVANTES DO CURRÍCULO ORIGINAL';
-  const insert=header?header.lines.length+1:0;
-  output.splice(insert,0,label,...relevant,'');
  }
  return output.join('\\n').replace(/\\n{3,}/g,'\\n\\n').trim();
 }
