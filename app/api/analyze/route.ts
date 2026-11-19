@@ -21,7 +21,8 @@ export async function POST(req:NextRequest){
   if(cv.length>40000||job.length>25000)return NextResponse.json({error:'Texto muito longo.'},{status:400});
   const result=localAnalysis(cv,job);
   const noteMatch=/^\s*APPLICATION NOTES\s*\(REMOVE AFTER VERIFICATION\)\s*$/im.exec(cv);
-  result.draft=noteMatch?cv.slice(0,noteMatch.index).trimEnd():cv;
+  const clean=noteMatch?cv.slice(0,noteMatch.index).trimEnd():cv;
+  result.draft=clean.replace(/^\\s*\\d{1,3}\\s*\\r?\\n(?=\\s*[A-ZÁÉÍÓÚ])/gm,'').trim();
   if(noteMatch)result.warnings.push('Notas internas de verificação removidas do rascunho. Revise antes de enviar.');
   return NextResponse.json(result);
  }catch{
