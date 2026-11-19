@@ -1,0 +1,3 @@
+import {NextRequest,NextResponse} from 'next/server';
+import {Document,Packer,Paragraph,TextRun} from 'docx';
+export async function POST(req:NextRequest){const {draft}=await req.json();if(typeof draft!=='string'||draft.length>50000)return NextResponse.json({error:'Texto inválido'},{status:400});const lines=draft.split(/\r?\n/);const doc=new Document({sections:[{properties:{},children:lines.map(line=>new Paragraph({children:[new TextRun({text:line})],spacing:{after:90}}))}]});const buffer=await Packer.toBuffer(doc);return new NextResponse(new Uint8Array(buffer),{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document','Content-Disposition':'attachment; filename="curriculo-ats.docx"'}})}
