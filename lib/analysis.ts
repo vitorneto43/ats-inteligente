@@ -13,14 +13,22 @@ const aliases: Record<string,string[]> = {
  'Vibe Coding':['vibe coder','vibe coding','vibe-coded'],
  'AI-assisted development':['ai-assisted software developer','ai assisted development','ai-assisted development','development with ai','desenvolvimento assistido por ia'],
  'Full Stack':['full-stack','full stack','frontend and backend','front-end and back-end'],
- 'REST API':['rest api','restful api','api integration','api/database integration','integração de api','integrações de api'],
  'Automation':['automation','automação','automations'],
  'Low-code':['low code','low-code','no-code'],
  'Cloud':['cloud','nuvem'],
  'Testing':['testing','tests','testes','testagem'],
  'Security':['security','segurança'],
  'Git':['github','git'],
- 'Agile':['agile','agile methodology','metodologias ágeis']
+ 'Agile':['agile','agile methodology','metodologias ágeis'],
+ 'CI/CD':['continuous integration','continuous delivery','continuous deployment','integração contínua','entrega contínua'],
+ 'Power Apps':['microsoft power apps','powerapps'],
+ 'Power Automate':['microsoft power automate','microsoft flow'],
+ 'TypeScript':['typescript','type script'],
+ 'PostgreSQL':['postgresql','postgres'],
+ 'REST API':['rest api','restful api','api integration','api/database integration','integração de api','integrações de api','apis rest'],
+ 'Prompt Engineering':['prompt engineering','engenharia de prompts','prompt design'],
+ 'React Native':['react native','react-native'],
+ 'Machine Learning':['machine learning','aprendizado de máquina']
 };
 
 const terms = [
@@ -30,7 +38,8 @@ const terms = [
   'Prompt Engineering', 'OpenAI', 'LangChain', 'Supabase', 'Express',
   'FastAPI', 'React Native', 'Agile', 'Scrum', 'HTML', 'CSS', 'Tailwind',
   'Java', 'C#', 'PHP', 'Redis', 'MongoDB', 'Testing', 'Security', 'Automation',
-  'Power Apps', 'Power Automate', 'Low-code', 'Vibe Coding', 'AI-assisted development', 'Full Stack', 'Cloud'
+  'Power Apps', 'Power Automate', 'Low-code', 'Vibe Coding', 'AI-assisted development', 'Full Stack', 'Cloud',
+  'TDD', 'BDD', 'Code Review', 'API Integration', 'Accessibility', 'Data Analysis', 'UX', 'Figma'
 ];
 
 function containsLiteral(source: string, term: string): boolean {
@@ -135,7 +144,7 @@ export function localAnalysis(cv: string, job: string): Analysis {
     matched,
     missing,
     warnings: [
-      'Cobertura limitada a palavras-chave reconhecidas; não representa uma nota ATS nem mede a adequação total à vaga.',
+      'Motor local independente: a cobertura compara termos técnicos identificados, não é nota oficial de ATS nem avaliação completa de experiência.',
       'Nenhuma experiência ou competência foi acrescentada ao currículo.',
       'Trechos relevantes são citações literais do currículo, não provas de domínio técnico. Remova cabeçalhos de revisão e duplicações antes de enviar.'
     ],
