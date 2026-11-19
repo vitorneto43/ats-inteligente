@@ -6,6 +6,8 @@ export type Analysis = {
   draft: string;
   mode: string;
   scoreAvailable?: boolean;
+  recommendations?: string[];
+  coverage?: {required:number;found:number;related:number};
   evidence?: string[];
   contextual?: {requirement:string; evidence:string; explanation:string}[];
 };
@@ -165,6 +167,14 @@ export function localAnalysis(cv: string, job: string): Analysis {
   const missing = requested.filter(term => !containsTerm(cv, term));
 
   const examples=evidence(cv,matched);
+  const contextual=contextualEvidence(cv,missing);
+  const recommendations:string[]=[];
+  if(!requested.length)recommendations.push('Não foram identificados requisitos técnicos do catálogo. Verifique manualmente a descrição da vaga.');
+  if(missing.length)recommendations.push('Revise os requisitos ausentes: '+missing.slice(0,8).join(', ')+'. Inclua apenas competências que você realmente possui e pode demonstrar.');
+  if(contextual.length)recommendations.push('Confira as experiências relacionadas abaixo. Se houver comprovação concreta, descreva a atividade e o projeto no currículo, sem transformar indícios em certificações ou domínio técnico.');
+  if(!/https?:\/\//i.test(cv))recommendations.push('Considere incluir links verificáveis de portfólio ou projetos, quando disponíveis.');
+  if(/APPLICATION NOTES|REMOVE AFTER VERIFICATION|TODO|PLACEHOLDER/i.test(cv))recommendations.push('Há notas internas ou marcadores de revisão no currículo original. Confira se foram retirados do documento final.');
+  recommendations.push('Antes de candidatar-se, revise datas, cargos, idioma e requisitos obrigatórios da vaga.');
   return {
     score: requested.length ? Math.round(100 * matched.length / requested.length) : 0,
     scoreAvailable: requested.length > 0,
@@ -176,7 +186,9 @@ export function localAnalysis(cv: string, job: string): Analysis {
       'Trechos relevantes são citações literais do currículo, não provas de domínio técnico. Remova cabeçalhos de revisão e duplicações antes de enviar.'
     ],
     evidence: examples,
-    contextual: contextualEvidence(cv,missing),
+    contextual,
+    recommendations,
+    coverage:{required:requested.length,found:matched.length,related:contextual.length},
     draft: cv,
     mode: 'local'
   };
