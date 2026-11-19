@@ -86,13 +86,13 @@ function evidence(cv:string,matched:string[]):string[] {
 
 /** Conservative, auditable contextual signals. These never become confirmed skills. */
 const contextualRules: Record<string,{signals:string[];explanation:string}> = {
- 'Cloud':{signals:['vercel','cloudflare','render.com','aws','azure','google cloud','hetzner','vps','cloud hosting','deploy','deployment','hospedagem'],explanation:'Indício de publicação ou infraestrutura; não comprova domínio geral de computação em nuvem.'},
+ 'Cloud':{signals:['web/android distribution','web deployment','hosting','hosted','deployed','vercel','cloudflare','render.com','aws','azure','google cloud','hetzner','vps','cloud hosting','deploy','deployment','hospedagem'],explanation:'Indício de publicação ou infraestrutura; não comprova domínio geral de computação em nuvem.'},
  'CI/CD':{signals:['github actions','gitlab ci','automated deployment','automated builds','pipeline','continuous integration','continuous delivery'],explanation:'Possível experiência com automação de entrega; confirme ferramentas e responsabilidades.'},
- 'Agile':{signals:['sprint','scrum','kanban','iterative development','desenvolvimento iterativo','iterações','iterative testing'],explanation:'Indício de prática iterativa; não comprova atuação formal com metodologias ágeis.'},
- 'Low-code':{signals:['lovable','replit','no-code','low code','low-code','visual builder'],explanation:'Experiência relacionada a ferramentas de construção assistida; não comprova Power Apps.'},
- 'Testing':{signals:['debugging','functional review','test user flows','quality assurance','testes funcionais'],explanation:'Atividades relacionadas a testes; não comprova TDD ou BDD.'},
+ 'Agile':{signals:['iterative testing','iterative','iterates','iteration','sprint','scrum','kanban','iterative development','desenvolvimento iterativo','iterações','iterative testing'],explanation:'Indício de prática iterativa; não comprova atuação formal com metodologias ágeis.'},
+ 'Low-code':{signals:['ai coding tools','natural-language prompting','ai-assisted development','vibe coder','lovable','replit','no-code','low code','low-code','visual builder'],explanation:'Experiência relacionada a ferramentas de construção assistida; não comprova Power Apps.'},
+ 'Testing':{signals:['testing','test','debugging','functional review','test user flows','quality assurance','testes funcionais'],explanation:'Atividades relacionadas a testes; não comprova TDD ou BDD.'},
  'Security':{signals:['authentication','autenticação','access control','cybersecurity','cibersegurança'],explanation:'Contato com temas de segurança; não comprova especialização em segurança de aplicações.'},
- 'API Integration':{signals:['api','apis','integração','integration','backend'],explanation:'Possível experiência com integrações; verifique o tipo e o nível de participação.'},
+ 'API Integration':{signals:['api/database integration','data integrations','api','apis','integração','integration','backend'],explanation:'Possível experiência com integrações; verifique o tipo e o nível de participação.'},
  'Code Review':{signals:['reviews outputs','reviewed code','revisão de código','code review'],explanation:'Atividade relacionada a revisão; confirme se envolve revisão técnica de código.'}
 };
 function contextualEvidence(cv:string,missing:string[]):NonNullable<Analysis['contextual']>{
