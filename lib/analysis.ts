@@ -5,6 +5,7 @@ export type Analysis = {
   warnings: string[];
   draft: string;
   mode: string;
+  scoreAvailable?: boolean;
 };
 
 const terms = [
@@ -13,7 +14,8 @@ const terms = [
   'GraphQL', 'Git', 'CI/CD', 'Kubernetes', 'Machine Learning', 'LLM',
   'Prompt Engineering', 'OpenAI', 'LangChain', 'Supabase', 'Express',
   'FastAPI', 'React Native', 'Agile', 'Scrum', 'HTML', 'CSS', 'Tailwind',
-  'Java', 'C#', 'PHP', 'Redis', 'MongoDB', 'Testing', 'Security', 'Automation'
+  'Java', 'C#', 'PHP', 'Redis', 'MongoDB', 'Testing', 'Security', 'Automation',
+  'Power Apps', 'Power Automate', 'Low-code', 'Vibe Coding', 'AI-assisted development', 'Full Stack', 'Cloud'
 ];
 
 function containsTerm(source: string, term: string): boolean {
@@ -44,10 +46,11 @@ export function localAnalysis(cv: string, job: string): Analysis {
 
   return {
     score: requested.length ? Math.round(100 * matched.length / requested.length) : 0,
+    scoreAvailable: requested.length > 0,
     matched,
     missing,
     warnings: [
-      'Pontuação baseada somente em termos técnicos reconhecidos, não é uma nota ATS oficial.',
+      'Cobertura limitada a palavras-chave reconhecidas; não representa uma nota ATS nem mede a adequação total à vaga.',
       'Nenhuma experiência ou competência foi acrescentada ao currículo.',
       'Revise manualmente todos os requisitos e o texto antes de enviar.'
     ],
