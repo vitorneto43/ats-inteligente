@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {localAnalysis} from '../../../lib/analysis';
+import {localAnalysis,tailorResume} from '../../../lib/analysis';
 export const runtime='nodejs';
 
 export async function POST(req:NextRequest){
@@ -8,6 +8,7 @@ export async function POST(req:NextRequest){
   const file=form.get('file');
   let cv=String(form.get('cv')||'');
   const job=String(form.get('job')||'');
+  const language=String(form.get('language')||'en');
   if(file instanceof File && file.size){
    if(file.size>5_000_000)return NextResponse.json({error:'Arquivo excede 5 MB.'},{status:400});
    const buf=Buffer.from(await file.arrayBuffer());
@@ -22,7 +23,8 @@ export async function POST(req:NextRequest){
   const result=localAnalysis(cv,job);
   const noteMatch=/^\s*APPLICATION NOTES\s*\(REMOVE AFTER VERIFICATION\)\s*$/im.exec(cv);
   const clean=noteMatch?cv.slice(0,noteMatch.index).trimEnd():cv;
-  result.draft=clean.replace(/^\\s*\\d{1,3}\\s*\\r?\\n(?=\\s*[A-ZÁÉÍÓÚ])/gm,'').trim();
+  result.draft=tailorResume(clean,job,language);
+  result.mode='structured';
   if(noteMatch)result.warnings.push('Notas internas de verificação removidas do rascunho. Revise antes de enviar.');
   return NextResponse.json(result);
  }catch{
