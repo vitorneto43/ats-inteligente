@@ -59,8 +59,17 @@ function containsTerm(source:string,term:string):boolean {
 }
 
 function evidence(cv:string,matched:string[]):string[] {
- const lines=cv.split(/\r?\n/).map(x=>x.trim()).filter(x=>x.length>=35 && x.length<=600);
- const scored=lines.map((line,index)=>({line,index,score:matched.filter(term=>containsTerm(line,term)).length}));
+ const lines=cv.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const chunks:string[]=[];
+ let current='';
+ for(const line of lines){
+  if(/^\d{1,3}$/.test(line))continue;
+  if(line.length<65 && current.length>60){chunks.push(current.trim());current='';}
+  current+=(current?' ':'')+line;
+  if(current.length>=220){chunks.push(current.trim());current='';}
+ }
+ if(current)chunks.push(current.trim());
+ const scored=chunks.map((line,index)=>({line,index,score:matched.filter(term=>containsTerm(line,term)).length}));
  return scored.filter(x=>x.score>0).sort((a,b)=>b.score-a.score||a.index-b.index).slice(0,5).map(x=>x.line);
 }
 
