@@ -7,6 +7,7 @@ export type Analysis = {
   mode: string;
   scoreAvailable?: boolean;
   evidence?: string[];
+  contextual?: {requirement:string; evidence:string; explanation:string}[];
 };
 
 const aliases: Record<string,string[]> = {
@@ -82,6 +83,32 @@ function evidence(cv:string,matched:string[]):string[] {
  return scored.filter(x=>x.score>0).sort((a,b)=>b.score-a.score||a.index-b.index).slice(0,5).map(x=>x.line);
 }
 
+
+/** Conservative, auditable contextual signals. These never become confirmed skills. */
+const contextualRules: Record<string,{signals:string[];explanation:string}> = {
+ 'Cloud':{signals:['vercel','cloudflare','render.com','aws','azure','google cloud','hetzner','vps','cloud hosting','deploy','deployment','hospedagem'],explanation:'Indício de publicação ou infraestrutura; não comprova domínio geral de computação em nuvem.'},
+ 'CI/CD':{signals:['github actions','gitlab ci','automated deployment','automated builds','pipeline','continuous integration','continuous delivery'],explanation:'Possível experiência com automação de entrega; confirme ferramentas e responsabilidades.'},
+ 'Agile':{signals:['sprint','scrum','kanban','iterative development','desenvolvimento iterativo','iterações','iterative testing'],explanation:'Indício de prática iterativa; não comprova atuação formal com metodologias ágeis.'},
+ 'Low-code':{signals:['lovable','replit','no-code','low code','low-code','visual builder'],explanation:'Experiência relacionada a ferramentas de construção assistida; não comprova Power Apps.'},
+ 'Testing':{signals:['debugging','functional review','test user flows','quality assurance','testes funcionais'],explanation:'Atividades relacionadas a testes; não comprova TDD ou BDD.'},
+ 'Security':{signals:['authentication','autenticação','access control','cybersecurity','cibersegurança'],explanation:'Contato com temas de segurança; não comprova especialização em segurança de aplicações.'},
+ 'API Integration':{signals:['api','apis','integração','integration','backend'],explanation:'Possível experiência com integrações; verifique o tipo e o nível de participação.'},
+ 'Code Review':{signals:['reviews outputs','reviewed code','revisão de código','code review'],explanation:'Atividade relacionada a revisão; confirme se envolve revisão técnica de código.'}
+};
+function contextualEvidence(cv:string,missing:string[]):NonNullable<Analysis['contextual']>{
+ const lines=cv.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const results:NonNullable<Analysis['contextual']>=[];
+ for(const requirement of missing){
+  const rule=contextualRules[requirement];
+  if(!rule)continue;
+  const index=lines.findIndex(line=>rule.signals.some(signal=>containsLiteral(line,signal)));
+  if(index<0)continue;
+  const excerpt=lines.slice(Math.max(0,index-1),Math.min(lines.length,index+2)).join(' ').slice(0,350);
+  results.push({requirement,evidence:excerpt,explanation:rule.explanation});
+ }
+ return results;
+}
+
 const headings=/^(PROFESSIONAL SUMMARY|PROFESSIONAL EXPERIENCE|WORK EXPERIENCE|PROJECTS|SELECTED PROJECTS|EDUCATION|ACADEMIC BACKGROUND|SKILLS|TECHNICAL SKILLS|CERTIFICATIONS|LANGUAGES|AI-ASSISTED DEVELOPMENT METHOD|RESUMO PROFISSIONAL|EXPERIÊNCIA PROFISSIONAL|PROJETOS|FORMAÇÃO|COMPETÊNCIAS|IDIOMAS)\s*:?$/i;
 
 export function tailorResume(cv:string,job:string,language:string):string {
@@ -149,6 +176,7 @@ export function localAnalysis(cv: string, job: string): Analysis {
       'Trechos relevantes são citações literais do currículo, não provas de domínio técnico. Remova cabeçalhos de revisão e duplicações antes de enviar.'
     ],
     evidence: examples,
+    contextual: contextualEvidence(cv,missing),
     draft: cv,
     mode: 'local'
   };
