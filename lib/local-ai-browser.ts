@@ -16,19 +16,22 @@ export function loadLocalAI(onProgress?:(message:string)=>void):Promise<Generato
 }
 export async function generateLocalSummary(original:string,language:string,onProgress?:(s:string)=>void):Promise<string>{
  const generator=await loadLocalAI(onProgress);
- const source=original.replace(/\s+/g,' ').trim().slice(0,550);
+ const source=original.replace(/\s+/g,' ').trim().slice(0,450);
  if(!source)return '';
  onProgress?.('IA local preparando sugestão...');
- const instruction=language==='en'?'Rewrite this professional summary clearly, without adding any facts: ':'Reescreva este resumo profissional de forma clara, sem acrescentar fatos: ';
- const out=await generator(instruction+source,{max_new_tokens:140});
+ const instruction=language==='en'?'Improve grammar and clarity of this professional bio. Keep all facts and do not add new ones. Bio: ':'Improve the grammar and clarity of this Portuguese professional bio. Keep the original language and facts. Bio: ';
+ const out=await generator(instruction+source,{max_new_tokens:110,num_beams:3,do_sample:false,repetition_penalty:1.2});
  const candidate=(out[0]?.generated_text||'').trim();
- if(!candidate||candidate.toLowerCase()===instruction.concat(source).toLowerCase()||candidate.length<35)return '';
+ if(!candidate||candidate.toLowerCase()===instruction.concat(source).toLowerCase()||candidate.length<45||candidate.length>source.length*1.6)return '';
  const bad=/copyright|all rights reserved|vibe software|lorem ipsum|terms of service|privacy policy|http[s]?:|©/i;
  if(bad.test(candidate))return '';
  const words=(s:string)=>new Set((s.toLowerCase().match(/[a-záàâãéêíóôõúç]{4,}/g)||[]).filter(w=>!['this','that','with','from','para','como','sobre','their','there','your','have','were','been'].includes(w)));
  const originalWords=words(source),outputWords=words(candidate);
  const overlap=[...outputWords].filter(w=>originalWords.has(w)).length;
- if(overlap<Math.min(5,Math.ceil(outputWords.size*0.3)))return '';
+ if(overlap<Math.max(5,Math.ceil(outputWords.size*0.55)))return '';
+ const sourceNumbers=source.match(/\b\d{2,}\b/g)||[];const generatedNumbers=candidate.match(/\b\d{2,}\b/g)||[];
+ if(generatedNumbers.some(n=>!sourceNumbers.includes(n)))return '';
+ if(language==='en'&&/[áàâãéêíóôõúç]/i.test(candidate)&&!/[áàâãéêíóôõúç]/i.test(source))return '';
  // The AI's prose is a suggestion only: never automatically overwrite verified resume data.
  return candidate.slice(0,1000);
 }
