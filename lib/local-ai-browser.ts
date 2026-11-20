@@ -50,8 +50,8 @@ export async function rewriteResumeLocally(draft:string,job:string,language:stri
    const candidate=(typeof raw==='string'?raw:Array.isArray(raw)?raw.at(-1)?.content||'':'').trim();
    const originalTokens=tokens(source),generatedTokens=tokens(candidate);
    const overlap=generatedTokens.filter(w=>originalTokens.includes(w)).length;
-   const originalNumbers=source.match(/\b\d{2,}\b/g)||[];
-   const outputNumbers=candidate.match(/\b\d{2,}\b/g)||[];
+   const originalNumbers:string[]=source.match(/\b\d{2,}\b/g)||[];
+   const outputNumbers:string[]=candidate.match(/\b\d{2,}\b/g)||[];
    const datesOk=outputNumbers.every(n=>originalNumbers.includes(n))&&originalNumbers.every(n=>outputNumbers.includes(n));
    const urls=source.match(/https?:\/\/[^\s]+/g)||[];
    const urlsOk=urls.every(url=>candidate.includes(url));
