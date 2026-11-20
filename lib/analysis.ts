@@ -141,9 +141,8 @@ export function tailorResume(cv:string,job:string,language:string):string {
   const sentences=summaryText.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(s=>s.trim()).filter(Boolean)||[];
   const ranked=sentences.map((text,i)=>({text,i,score:score(text)}))
     .sort((a,b)=>b.score-a.score||a.i-b.i);
-  const selected=ranked.filter(s=>s.score>0).slice(0,3);
-  const fallback=ranked.find(s=>s.i===0);
-  const chosen=selected.length?selected:(fallback?[fallback]:[]);
+  // Preserve every original claim; only prioritize sentences relevant to the vacancy.
+  const chosen=ranked;
   output.push(summary.title,...chosen.map(s=>s.text),'');
  }
  // The focus block contains only skill labels that also appear in the original resume.
@@ -151,12 +150,22 @@ export function tailorResume(cv:string,job:string,language:string):string {
   output.push(language==='en'?'RELEVANT SKILLS FOR THIS ROLE':'COMPETÊNCIAS RELEVANTES PARA ESTA VAGA',matched.join(' | '),'');
  }
  for(const s of skills){
-  // Keep lines and categories intact: splitting wrapped PDF lines can corrupt skills.
-  output.push(s.title,...s.lines,'');
+  // Retain every skill, placing existing job-relevant entries first.
+  const ordered=s.lines.map((text,i)=>({text,i,score:score(text)})).sort((a,b)=>b.score-a.score||a.i-b.i);
+  output.push(s.title,...ordered.map(x=>x.text),'');
  }
  for(const s of other){
-  // Keep experience entries, dates and chronology intact, including unrelated jobs.
-  output.push(s.title,...s.lines,'');
+  // Preserve chronological experience, employer names, dates, and all original claims.
+  // Only reorder independent bullet points inside a contiguous bullet list.
+  const ordered:string[]=[];
+  for(let i=0;i<s.lines.length;){
+   if(!/^[-•*]\\s/.test(s.lines[i])){ordered.push(s.lines[i]);i++;continue;}
+   let end=i;while(end<s.lines.length&&/^[-•*]\\s/.test(s.lines[end]))end++;
+   const bullets=s.lines.slice(i,end).map((text,j)=>({text,j,score:score(text)}));
+   bullets.sort((a,b)=>b.score-a.score||a.j-b.j);
+   ordered.push(...bullets.map(x=>x.text));i=end;
+  }
+  output.push(s.title,...ordered,'');
  }
  return output.join('\n').replace(/\n{3,}/g,'\n\n').trim();
 }
