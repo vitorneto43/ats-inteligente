@@ -40,7 +40,7 @@ export async function rewriteResumeLocally(draft:string,job:string,language:stri
   const source=lines[i].trim();
   // Edit only self-contained descriptive statements; never rewrite headers, dates,
   // contact details, company/project names on standalone lines, or section titles.
-  if(source.length<65||source.length>480||protectedLine.test(source)||/^[-•*]?\s*(?:\d{4}|\d{2}\/\d{4})\b/.test(source)||attempted>=10)continue;
+  if(source.length<65||source.length>480||!/[.!?]$/.test(source)||protectedLine.test(source)||/^[-•*]?\s*(?:\d{4}|\d{2}\/\d{4})\b/.test(source)||attempted>=10)continue;
   const bullet=/^([-•*]\s+)/.exec(source)?.[1]||'';
   const original=source.slice(bullet.length);
   attempted++;
@@ -62,7 +62,8 @@ export async function rewriteResumeLocally(draft:string,job:string,language:stri
    const entitiesOk=entities.every(e=>candidate.toLowerCase().includes(e.toLowerCase()));
    const urls=original.match(/https?:\/\/[^\s]+/g)||[];
    const urlsOk=urls.every(u=>candidate.includes(u));
-   const safe=candidate.length>=original.length*.8&&candidate.length<=original.length*1.18&&overlap>=.82&&numbersOk&&entitiesOk&&urlsOk&&!/copyright|lorem ipsum|as an ai|years of experience|decades of experience|since the early|original sentence|edited sentence/i.test(candidate)&&!candidate.includes('\n');
+   const endsProperly=/[.!?]$/.test(candidate)&&!/(?:\bthe|\ba|\ban|\band|\bor|\bfor|\bto|\bwith|\bof|\bde|\bda|\bdo|\be|\bpara)$/i.test(candidate);
+   const safe=endsProperly&&candidate.length>=original.length*.8&&candidate.length<=original.length*1.18&&overlap>=.9&&numbersOk&&entitiesOk&&urlsOk&&!/copyright|lorem ipsum|as an ai|years of experience|decades of experience|since the early|original sentence|edited sentence/i.test(candidate)&&!candidate.includes('\n');
    if(safe&&candidate!==original){output[i]=bullet+candidate;rewritten++;}
    else if(candidate!==original)rejected++;
   }catch{rejected++;}
