@@ -55,8 +55,8 @@ export async function rewriteResumeLocally(draft:string,job:string,language:stri
    const candidate=(typeof raw==='string'?raw:Array.isArray(raw)?raw.at(-1)?.content||'':'').trim().replace(/^["']|["']$/g,'');
    const oldWords=words(original),newWords=words(candidate);
    const overlap=newWords.filter(w=>oldWords.includes(w)).length/Math.max(newWords.length,1);
-   const originalNums=original.match(/\b\d+(?:[.,]\d+)?\b/g)||[];
-   const newNums=candidate.match(/\b\d+(?:[.,]\d+)?\b/g)||[];
+   const originalNums:string[]=original.match(/\b\d+(?:[.,]\d+)?\b/g)||[];
+   const newNums:string[]=candidate.match(/\b\d+(?:[.,]\d+)?\b/g)||[];
    const numbersOk=originalNums.every(n=>newNums.includes(n))&&newNums.every(n=>originalNums.includes(n));
    const entities=original.match(technical)||[];
    const entitiesOk=entities.every(e=>candidate.toLowerCase().includes(e.toLowerCase()));
