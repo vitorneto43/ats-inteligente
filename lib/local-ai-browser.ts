@@ -23,6 +23,12 @@ export async function generateLocalSummary(original:string,language:string,onPro
  const out=await generator(instruction+source,{max_new_tokens:140});
  const candidate=(out[0]?.generated_text||'').trim();
  if(!candidate||candidate.toLowerCase()===instruction.concat(source).toLowerCase()||candidate.length<35)return '';
+ const bad=/copyright|all rights reserved|vibe software|lorem ipsum|terms of service|privacy policy|http[s]?:|©/i;
+ if(bad.test(candidate))return '';
+ const words=(s:string)=>new Set((s.toLowerCase().match(/[a-záàâãéêíóôõúç]{4,}/g)||[]).filter(w=>!['this','that','with','from','para','como','sobre','their','there','your','have','were','been'].includes(w)));
+ const originalWords=words(source),outputWords=words(candidate);
+ const overlap=[...outputWords].filter(w=>originalWords.has(w)).length;
+ if(overlap<Math.min(5,Math.ceil(outputWords.size*0.3)))return '';
  // The AI's prose is a suggestion only: never automatically overwrite verified resume data.
  return candidate.slice(0,1000);
 }
