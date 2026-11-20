@@ -4,7 +4,7 @@ type Generator=(input:Message[],options:Record<string,unknown>)=>Promise<Generat
 let cached:Promise<Generator>|undefined;
 export function loadLocalAI(onProgress?:(message:string)=>void):Promise<Generator>{
  if(!cached)cached=(async()=>{
-  onProgress?.('Carregando Qwen 2.5 Instruct no celular (primeiro acesso exige download grande)...');
+  onProgress?.('Carregando SmolLM2 360M Instruct no celular (primeiro acesso exige download grande)...');
   const url='https://esm.sh/@huggingface/transformers@3.8.1?bundle';
   onProgress?.('Carregando biblioteca de IA no navegador...');
   const lib=await import(/* webpackIgnore: true */ url) as {
@@ -13,15 +13,15 @@ export function loadLocalAI(onProgress?:(message:string)=>void):Promise<Generato
   };
   lib.env.allowLocalModels=false;
   if(lib.env.backends?.onnx?.wasm)lib.env.backends.onnx.wasm.numThreads=1;
-  onProgress?.('Preparando modelo local (Qwen 2.5, arquivo de 786 MB)...');
-  return await lib.pipeline('text-generation','onnx-community/Qwen2.5-0.5B-Instruct',{
+  onProgress?.('Preparando modelo local (SmolLM2 360M, arquivo de aproximadamente 386 MB)...');
+  return await lib.pipeline('text-generation','onnx-community/SmolLM2-360M-Instruct-ONNX',{
    device:'wasm',dtype:'q4',
    progress_callback:(p:{status?:string;progress?:number;file?:string})=>{
     if(p.status==='progress'&&typeof p.progress==='number')onProgress?.('Baixando modelo local: '+Math.round(p.progress)+'%');
     else if(p.status==='initiate'&&p.file)onProgress?.('Solicitando arquivo da IA: '+String(p.file));
    }
   });
- })().catch(e=>{cached=undefined;throw new Error('Falha ao carregar modelo Qwen no celular: '+(e instanceof Error?e.message:String(e)))});
+ })().catch(e=>{cached=undefined;throw new Error('Falha ao carregar modelo SmolLM2 no celular: '+(e instanceof Error?e.message:String(e)))});
  return cached;
 }
 /** Rewrites the complete ATS draft locally, one bounded paragraph at a time.
