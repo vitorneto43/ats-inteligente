@@ -40,7 +40,11 @@ export async function generateLocalSummary(original:string,language:string,onPro
  const inputWords=words(source),generatedWords=words(candidate);
  const overlap=[...generatedWords].filter(w=>inputWords.has(w)).length;
  if(overlap<Math.max(5,Math.ceil(generatedWords.size*.4)))return '';
- const sourceNumbers=source.match(/\b\d{2,}\b/g)||[];
+ const sourceNumbers:string[]=source.match(/\b\d{2,}\b/g)||[];
  if((candidate.match(/\b\d{2,}\b/g)||[]).some(n=>!sourceNumbers.includes(n)))return '';
+ // Reject new claims about tenure, career starting dates or duration, including spelled-out decades.
+ const timeline=/\b(?:since|from|started|began|beginning|early|late|mid|years? of experience|decades?|desde|início|anos de experiência)\b/i;
+ if(timeline.test(candidate)&&!timeline.test(source))return '';
+ if(/\b(?:nineteen|twenty)\s+(?:hundred|ninety|eighty|seventy|sixty|fifty|forty|thirty|twenty|ten)\b/i.test(candidate))return '';
  return candidate.slice(0,1000);
 }
