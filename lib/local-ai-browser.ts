@@ -24,45 +24,49 @@ export function loadLocalAI(onProgress?:(message:string)=>void):Promise<Generato
  })().catch(e=>{cached=undefined;throw new Error('Falha ao carregar modelo SmolLM2 no celular: '+(e instanceof Error?e.message:String(e)))});
  return cached;
 }
-/** Rewrites the complete ATS draft locally, one bounded paragraph at a time.
- * Sections that cannot be safely rewritten remain unchanged. */
-export async function rewriteResumeLocally(draft:string,job:string,language:string,onProgress?:(s:string)=>void):Promise<{text:string;rewritten:number;attempted:number}>{
+/** Controlled editing: preserve original lines, employers, dates, and links.
+ * The local model may improve wording of a descriptive line, never create a new entry.
+ * Rejected edits are kept verbatim and counted for transparent diagnostics. */
+export async function rewriteResumeLocally(draft:string,job:string,language:string,onProgress?:(s:string)=>void):Promise<{text:string;rewritten:number;attempted:number;rejected:number}>{
  const generator=await loadLocalAI(onProgress);
- const sections=draft.split(/(\n\s*\n)/);
- const jobKeywords=job.replace(/\s+/g,' ').slice(0,1200);
- const stop=new Set('a an and the or of for to in on at by with from this that these those is are was were as it its who which into through using used work works worked i my me we our you your de da do dos das e em no na nos nas com por para um uma o os a as que seu sua seus suas como ao aos à às um uma'.split(' '));
- const tokens=(s:string)=>[...new Set((s.toLowerCase().match(/[a-záàâãéêíóôõúç0-9][a-záàâãéêíóôõúç0-9+.#/-]*/g)||[]).filter(w=>w.length>2&&!stop.has(w)))];
- const rewritten:string[]=[];let changed=0,attempted=0;
- for(let i=0;i<sections.length;i++){
-  const section=sections[i];
-  if(/^\n\s*\n$/.test(section)){rewritten.push(section);continue;}
-  const lines=section.split('\n');
-  const heading=lines[0]||'';
-  const isHeader=i===0||/^(?:RELEVANT SKILLS|COMPETÊNCIAS RELEVANTES|SKILLS|TECHNICAL SKILLS|COMPETÊNCIAS|LANGUAGES|IDIOMAS|EDUCATION|FORMAÇÃO)/i.test(heading);
-  const source=lines.slice(1).join(' ').trim();
-  if(isHeader||source.length<35||source.length>1050||attempted>=20){rewritten.push(section);continue;}
+ onProgress?.('Modelo carregado. Identificando trechos editáveis...');
+ const lines=draft.split(/\r?\n/);
+ const jobContext=job.replace(/\s+/g,' ').slice(0,750);
+ const protectedLine=/^(?:https?:\/\/|www\.|\S+@\S+|\+?\d[\d\s()+.-]{7,}|(?:PROFESSIONAL|WORK|EXPERIENCE|PROJECTS|EDUCATION|SKILLS|TECHNICAL|CERTIFICATIONS|LANGUAGES|RESUMO|EXPERIÊNCIA|PROJETOS|FORMAÇÃO|COMPETÊNCIAS|IDIOMAS|RELEVANT|AI-ASSISTED)\b)/i;
+ const technical=/\b(?:React|Node|Next|Python|JavaScript|TypeScript|PostgreSQL|Docker|Supabase|Vercel|GitHub|Azure|AWS|SQL|API|LLM|Vibe|OpenAI|Claude|Lovable|Replit|n8n|Power Apps|Power Automate)\b/gi;
+ const words=(s:string)=>[...new Set((s.toLowerCase().match(/[a-záàâãéêíóôõúç][a-záàâãéêíóôõúç0-9+.#/-]{2,}/g)||[]).filter(w=>!['the','and','for','with','from','that','this','are','was','were','you','your','uma','para','com','dos','das','que','por','como','seus','suas'].includes(w)))];
+ const output=[...lines];let attempted=0,rewritten=0,rejected=0;
+ for(let i=0;i<lines.length;i++){
+  const source=lines[i].trim();
+  // Edit only self-contained descriptive statements; never rewrite headers, dates,
+  // contact details, company/project names on standalone lines, or section titles.
+  if(source.length<65||source.length>480||protectedLine.test(source)||/^[-•*]?\s*(?:\d{4}|\d{2}\/\d{4})\b/.test(source)||attempted>=10)continue;
+  const bullet=/^([-•*]\s+)/.exec(source)?.[1]||'';
+  const original=source.slice(bullet.length);
   attempted++;
-  onProgress?.('IA local adaptando o currículo: seção '+attempted+'...');
+  onProgress?.('IA editando trecho '+attempted+' (alterações verificadas antes de aplicar)...');
   try{
    const messages:Message[]=[
-    {role:'system',content:'You are a factual resume editor. Edit ONLY the provided resume passage to emphasize existing facts relevant to the vacancy. Keep the same meaning, all claims and all entities. Prefer minimal changes. If the passage is not relevant, repeat it unchanged. Never add new facts, employers, projects, technologies, years, dates, achievements, certifications or skills. Preserve all specific names, dates and URLs. Return ONLY the rewritten text, with no heading, bullets or commentary.'},
-    {role:'user',content:'Language: '+(language==='en'?'English':'Portuguese')+'. Edit the ORIGINAL passage conservatively for this vacancy. Do not add any job requirement that is absent from the original passage. Job: '+jobKeywords+'\nOriginal resume section: '+source}
+    {role:'system',content:'You are a copy editor, not a resume author. Make MINIMAL wording improvements to ONE existing resume sentence. Preserve ALL facts, nouns, technology names, organizations, numbers, dates and links. Do not add achievements or requirements from the job. If no safe improvement exists, return the original sentence verbatim. Output only the edited sentence.'},
+    {role:'user',content:'Language: '+(language==='en'?'English':'Portuguese')+'. Vacancy context (for emphasis ONLY): '+jobContext+'\nEDIT THIS EXISTING SENTENCE, without adding or removing facts:\n'+original}
    ];
-   const out=await generator(messages,{max_new_tokens:Math.min(350,Math.max(120,Math.ceil(source.length/2))),do_sample:false,return_full_text:false,repetition_penalty:1.15});
-   const raw=out[0]?.generated_text;
-   const candidate=(typeof raw==='string'?raw:Array.isArray(raw)?raw.at(-1)?.content||'':'').trim();
-   const originalTokens=tokens(source),generatedTokens=tokens(candidate);
-   const overlap=generatedTokens.filter(w=>originalTokens.includes(w)).length;
-   const originalNumbers:string[]=source.match(/\b\d{2,}\b/g)||[];
-   const outputNumbers:string[]=candidate.match(/\b\d{2,}\b/g)||[];
-   const datesOk=outputNumbers.every(n=>originalNumbers.includes(n))&&originalNumbers.every(n=>outputNumbers.includes(n));
-   const urls=source.match(/https?:\/\/[^\s]+/g)||[];
-   const urlsOk=urls.every(url=>candidate.includes(url));
-   const suspicious=/copyright|all rights reserved|lorem ipsum|as an ai|i cannot|nineteen (?:hundred|ninety|eighty)|since the early|years of experience|decades of experience/i.test(candidate);
-   if(candidate.length>=source.length*.55&&candidate.length<=source.length*1.3&&generatedTokens.length>5&&overlap/generatedTokens.length>=.65&&datesOk&&urlsOk&&!suspicious&&candidate!==source){
-    rewritten.push(heading+'\n'+candidate);changed++;
-   }else rewritten.push(section);
-  }catch{rewritten.push(section);}
+   const generated=await generator(messages,{max_new_tokens:Math.min(180,Math.max(90,Math.ceil(original.length/2))),do_sample:false,return_full_text:false,repetition_penalty:1.08});
+   const raw=generated[0]?.generated_text;
+   const candidate=(typeof raw==='string'?raw:Array.isArray(raw)?raw.at(-1)?.content||'':'').trim().replace(/^["']|["']$/g,'');
+   const oldWords=words(original),newWords=words(candidate);
+   const overlap=newWords.filter(w=>oldWords.includes(w)).length/Math.max(newWords.length,1);
+   const originalNums=original.match(/\b\d+(?:[.,]\d+)?\b/g)||[];
+   const newNums=candidate.match(/\b\d+(?:[.,]\d+)?\b/g)||[];
+   const numbersOk=originalNums.every(n=>newNums.includes(n))&&newNums.every(n=>originalNums.includes(n));
+   const entities=original.match(technical)||[];
+   const entitiesOk=entities.every(e=>candidate.toLowerCase().includes(e.toLowerCase()));
+   const urls=original.match(/https?:\/\/[^\s]+/g)||[];
+   const urlsOk=urls.every(u=>candidate.includes(u));
+   const safe=candidate.length>=original.length*.8&&candidate.length<=original.length*1.18&&overlap>=.82&&numbersOk&&entitiesOk&&urlsOk&&!/copyright|lorem ipsum|as an ai|years of experience|decades of experience|since the early|original sentence|edited sentence/i.test(candidate)&&!candidate.includes('\n');
+   if(safe&&candidate!==original){output[i]=bullet+candidate;rewritten++;}
+   else if(candidate!==original)rejected++;
+  }catch{rejected++;}
  }
- return {text:rewritten.join(''),rewritten:changed,attempted};
+ onProgress?.('Verificação concluída: '+rewritten+' trechos editados, '+rejected+' alterações rejeitadas, '+attempted+' examinados.');
+ return {text:output.join('\n'),rewritten,attempted,rejected};
 }
