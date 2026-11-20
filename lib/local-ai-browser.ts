@@ -40,7 +40,7 @@ export async function rewriteResumeLocally(draft:string,job:string,language:stri
   const source=lines[i].trim();
   // Edit only self-contained descriptive statements; never rewrite headers, dates,
   // contact details, company/project names on standalone lines, or section titles.
-  if(source.length<65||source.length>480||!/[.!?]$/.test(source)||protectedLine.test(source)||/^[-•*]?\s*(?:\d{4}|\d{2}\/\d{4})\b/.test(source)||attempted>=10)continue;
+  if(source.length<65||source.length>480||!/[.!?]$/.test(source)||protectedLine.test(source)||/^[-•*]?\s*(?:\d{4}|\d{2}\/\d{4})\b/.test(source)||attempted>=4)continue;
   const bullet=/^([-•*]\s+)/.exec(source)?.[1]||'';
   const original=source.slice(bullet.length);
   attempted++;
@@ -50,7 +50,7 @@ export async function rewriteResumeLocally(draft:string,job:string,language:stri
     {role:'system',content:'You are a copy editor, not a resume author. Make MINIMAL wording improvements to ONE existing resume sentence. Preserve ALL facts, nouns, technology names, organizations, numbers, dates and links. Do not add achievements or requirements from the job. If no safe improvement exists, return the original sentence verbatim. Output only the edited sentence.'},
     {role:'user',content:'Language: '+(language==='en'?'English':'Portuguese')+'. Vacancy context (for emphasis ONLY): '+jobContext+'\nEDIT THIS EXISTING SENTENCE, without adding or removing facts:\n'+original}
    ];
-   const generated=await generator(messages,{max_new_tokens:Math.min(180,Math.max(90,Math.ceil(original.length/2))),do_sample:false,return_full_text:false,repetition_penalty:1.08});
+   const generated=await generator(messages,{max_new_tokens:Math.min(110,Math.max(60,Math.ceil(original.length/4))),do_sample:false,return_full_text:false,repetition_penalty:1.08});
    const raw=generated[0]?.generated_text;
    const candidate=(typeof raw==='string'?raw:Array.isArray(raw)?raw.at(-1)?.content||'':'').trim().replace(/^["']|["']$/g,'');
    const oldWords=words(original),newWords=words(candidate);
