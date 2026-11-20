@@ -4,7 +4,7 @@ type Generator=(input:Message[],options:Record<string,unknown>)=>Promise<Generat
 let cached:Promise<Generator>|undefined;
 export function loadLocalAI(onProgress?:(message:string)=>void):Promise<Generator>{
  if(!cached)cached=(async()=>{
-  onProgress?.('Carregando IA de instruções na CPU (primeiro acesso exige download)...');
+  onProgress?.('Carregando Qwen 2.5 Instruct no celular (primeiro acesso exige download grande)...');
   const url='https://esm.sh/@huggingface/transformers@3.8.1?bundle';
   const lib=await import(/* webpackIgnore: true */ url) as {
    env:{allowLocalModels:boolean;backends?:{onnx?:{wasm?:{numThreads?:number}}}};
@@ -12,7 +12,7 @@ export function loadLocalAI(onProgress?:(message:string)=>void):Promise<Generato
   };
   lib.env.allowLocalModels=false;
   if(lib.env.backends?.onnx?.wasm)lib.env.backends.onnx.wasm.numThreads=1;
-  return await lib.pipeline('text-generation','onnx-community/SmolLM2-135M-Instruct-ONNX-MHA',{
+  return await lib.pipeline('text-generation','onnx-community/Qwen2.5-0.5B-Instruct',{
    device:'wasm',dtype:'q4',
    progress_callback:(p:{status?:string;progress?:number})=>{
     if(p.status==='progress'&&typeof p.progress==='number')onProgress?.('Baixando modelo local: '+Math.round(p.progress)+'%');
@@ -37,7 +37,7 @@ export async function rewriteResumeLocally(draft:string,job:string,language:stri
   const heading=lines[0]||'';
   const isHeader=i===0||/^(?:RELEVANT SKILLS|COMPETÊNCIAS RELEVANTES|SKILLS|TECHNICAL SKILLS|COMPETÊNCIAS|LANGUAGES|IDIOMAS|EDUCATION|FORMAÇÃO)/i.test(heading);
   const source=lines.slice(1).join(' ').trim();
-  if(isHeader||source.length<80||source.length>1050||attempted>=8){rewritten.push(section);continue;}
+  if(isHeader||source.length<80||source.length>1050||attempted>=12){rewritten.push(section);continue;}
   attempted++;
   onProgress?.('IA local adaptando o currículo: seção '+attempted+'...');
   try{
@@ -56,7 +56,7 @@ export async function rewriteResumeLocally(draft:string,job:string,language:stri
    const urls=source.match(/https?:\/\/[^\s]+/g)||[];
    const urlsOk=urls.every(url=>candidate.includes(url));
    const suspicious=/copyright|all rights reserved|lorem ipsum|as an ai|i cannot|nineteen (?:hundred|ninety|eighty)|since the early|years of experience|decades of experience/i.test(candidate);
-   if(candidate.length>=source.length*.55&&candidate.length<=source.length*1.3&&generatedTokens.length>5&&overlap/generatedTokens.length>=.82&&datesOk&&urlsOk&&!suspicious&&candidate!==source){
+   if(candidate.length>=source.length*.55&&candidate.length<=source.length*1.3&&generatedTokens.length>5&&overlap/generatedTokens.length>=.7&&datesOk&&urlsOk&&!suspicious&&candidate!==source){
     rewritten.push(heading+'\n'+candidate);changed++;
    }else rewritten.push(section);
   }catch{rewritten.push(section);}
