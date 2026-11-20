@@ -21,30 +21,45 @@ export function loadLocalAI(onProgress?:(message:string)=>void):Promise<Generato
  })().catch(e=>{cached=undefined;throw e});
  return cached;
 }
-export async function generateLocalSummary(original:string,language:string,onProgress?:(s:string)=>void):Promise<string>{
- const source=original.replace(/\s+/g,' ').trim().slice(0,480);
- if(source.length<45)return '';
+/** Rewrites the complete ATS draft locally, one bounded paragraph at a time.
+ * Sections that cannot be safely rewritten remain unchanged. */
+export async function rewriteResumeLocally(draft:string,job:string,language:string,onProgress?:(s:string)=>void):Promise<{text:string;rewritten:number;attempted:number}>{
  const generator=await loadLocalAI(onProgress);
- onProgress?.('IA local reescrevendo o resumo...');
- const target=language==='en'?'English':'Portuguese';
- const messages:Message[]=[
-  {role:'system',content:'You edit professional resumes. Use ONLY facts explicitly in the source. Never invent experience, qualifications, employers, dates, names or skills. Output only one polished paragraph in the requested language. No introductions, disclaimers or quotations.'},
-  {role:'user',content:'Rewrite the following professional summary in '+target+'. Improve clarity, preserve meaning and factual claims. Do not add any new skills or facts. Source: '+source}
- ];
- const output=await generator(messages,{max_new_tokens:125,do_sample:false,return_full_text:false,repetition_penalty:1.15});
- const raw=output[0]?.generated_text;
- const candidate=(typeof raw==='string'?raw:Array.isArray(raw)?raw.at(-1)?.content||'':'').trim().replace(/^["']|["']$/g,'');
- if(candidate.length<50||candidate.length>source.length*1.7)return '';
- if(/copyright|all rights reserved|vibe software|lorem ipsum|terms of service|privacy policy|https?:|©|as an ai|i cannot/i.test(candidate))return '';
- const words=(s:string)=>new Set((s.toLowerCase().match(/[a-záàâãéêíóôõúç]{4,}/g)||[]).filter(w=>!['this','that','with','from','para','como','sobre','their','there','your','have','were','been'].includes(w)));
- const inputWords=words(source),generatedWords=words(candidate);
- const overlap=[...generatedWords].filter(w=>inputWords.has(w)).length;
- if(overlap<Math.max(5,Math.ceil(generatedWords.size*.4)))return '';
- const sourceNumbers:string[]=source.match(/\b\d{2,}\b/g)||[];
- if((candidate.match(/\b\d{2,}\b/g)||[]).some(n=>!sourceNumbers.includes(n)))return '';
- // Reject new claims about tenure, career starting dates or duration, including spelled-out decades.
- const timeline=/\b(?:since|from|started|began|beginning|early|late|mid|years? of experience|decades?|desde|início|anos de experiência)\b/i;
- if(timeline.test(candidate)&&!timeline.test(source))return '';
- if(/\b(?:nineteen|twenty)\s+(?:hundred|ninety|eighty|seventy|sixty|fifty|forty|thirty|twenty|ten)\b/i.test(candidate))return '';
- return candidate.slice(0,1000);
+ const sections=draft.split(/(\n\s*\n)/);
+ const jobKeywords=job.replace(/\s+/g,' ').slice(0,500);
+ const stop=new Set('a an and the or of for to in on at by with from this that these those is are was were as it its who which into through using used work works worked i my me we our you your de da do dos das e em no na nos nas com por para um uma o os a as que seu sua seus suas como ao aos à às um uma'.split(' '));
+ const tokens=(s:string)=>[...new Set((s.toLowerCase().match(/[a-záàâãéêíóôõúç0-9][a-záàâãéêíóôõúç0-9+.#/-]*/g)||[]).filter(w=>w.length>2&&!stop.has(w)))];
+ const rewritten:string[]=[];let changed=0,attempted=0;
+ for(let i=0;i<sections.length;i++){
+  const section=sections[i];
+  if(/^\n\s*\n$/.test(section)){rewritten.push(section);continue;}
+  const lines=section.split('\n');
+  const heading=lines[0]||'';
+  const isHeader=i===0||/^(?:RELEVANT SKILLS|COMPETÊNCIAS RELEVANTES|SKILLS|TECHNICAL SKILLS|COMPETÊNCIAS|LANGUAGES|IDIOMAS|EDUCATION|FORMAÇÃO)/i.test(heading);
+  const source=lines.slice(1).join(' ').trim();
+  if(isHeader||source.length<80||source.length>1050||attempted>=8){rewritten.push(section);continue;}
+  attempted++;
+  onProgress?.('IA local adaptando o currículo: seção '+attempted+'...');
+  try{
+   const messages:Message[]=[
+    {role:'system',content:'You are a factual resume editor. Rewrite ONLY the provided text in clear professional prose. Never add new facts, employers, projects, technologies, years, dates, achievements, certifications or skills. Preserve all specific names, dates and URLs. Return ONLY the rewritten text, with no heading, bullets or commentary.'},
+    {role:'user',content:'Language: '+(language==='en'?'English':'Portuguese')+'. Tailor the wording to this job description ONLY where supported by the source. Job: '+jobKeywords+'\nOriginal resume section: '+source}
+   ];
+   const out=await generator(messages,{max_new_tokens:Math.min(260,Math.max(100,Math.ceil(source.length/3))),do_sample:false,return_full_text:false,repetition_penalty:1.15});
+   const raw=out[0]?.generated_text;
+   const candidate=(typeof raw==='string'?raw:Array.isArray(raw)?raw.at(-1)?.content||'':'').trim();
+   const originalTokens=tokens(source),generatedTokens=tokens(candidate);
+   const overlap=generatedTokens.filter(w=>originalTokens.includes(w)).length;
+   const originalNumbers=source.match(/\b\d{2,}\b/g)||[];
+   const outputNumbers=candidate.match(/\b\d{2,}\b/g)||[];
+   const datesOk=outputNumbers.every(n=>originalNumbers.includes(n))&&originalNumbers.every(n=>outputNumbers.includes(n));
+   const urls=source.match(/https?:\/\/[^\s]+/g)||[];
+   const urlsOk=urls.every(url=>candidate.includes(url));
+   const suspicious=/copyright|all rights reserved|lorem ipsum|as an ai|i cannot|nineteen (?:hundred|ninety|eighty)|since the early|years of experience|decades of experience/i.test(candidate);
+   if(candidate.length>=source.length*.55&&candidate.length<=source.length*1.3&&generatedTokens.length>5&&overlap/generatedTokens.length>=.82&&datesOk&&urlsOk&&!suspicious&&candidate!==source){
+    rewritten.push(heading+'\n'+candidate);changed++;
+   }else rewritten.push(section);
+  }catch{rewritten.push(section);}
+ }
+ return {text:rewritten.join(''),rewritten:changed,attempted};
 }
