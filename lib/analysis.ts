@@ -129,6 +129,14 @@ export function tailorResume(cv:string,job:string,language:string):string {
  const requested=terms.filter(term=>containsTerm(job,term));
  const matched=requested.filter(term=>containsTerm(clean,term));
  const score=(text:string)=>matched.filter(term=>containsTerm(text,term)).length;
+ // Rank only facts already present in the CV. Broader vocabulary is used to
+ // identify relevant projects, never to introduce a new skill or achievement.
+ const jobWords=new Set((job.toLowerCase().match(/[a-záàâãéêíóôõúç]{4,}/g)||[]).filter(w=>!['with','that','this','from','will','have','their','para','como','sobre','experience','requirements','candidate','company','role','work'].includes(w)));
+ const relevance=(text:string)=>{
+  const sourceWords=new Set(text.toLowerCase().match(/[a-záàâãéêíóôõúç]{4,}/g)||[]);
+  let common=0;for(const word of jobWords)if(sourceWords.has(word))common++;
+  return score(text)*5+Math.min(common,12);
+ };
  const header=sections.find(s=>s.title==='HEADER');
  const summary=sections.find(s=>/SUMMARY|RESUMO/i.test(s.title));
  const skills=sections.filter(s=>/SKILLS|COMPETÊNCIAS/i.test(s.title));
@@ -139,7 +147,7 @@ export function tailorResume(cv:string,job:string,language:string):string {
  if(summary){
   const summaryText=summary.lines.join(' ').replace(/\s+/g,' ').trim();
   const sentences=summaryText.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(s=>s.trim()).filter(Boolean)||[];
-  const ranked=sentences.map((text,i)=>({text,i,score:score(text)}))
+  const ranked=sentences.map((text,i)=>({text,i,score:relevance(text)}))
     .sort((a,b)=>b.score-a.score||a.i-b.i);
   // Preserve every original claim; only prioritize sentences relevant to the vacancy.
   const chosen=ranked;
@@ -151,10 +159,25 @@ export function tailorResume(cv:string,job:string,language:string):string {
  }
  for(const s of skills){
   // Retain every skill, placing existing job-relevant entries first.
-  const ordered=s.lines.map((text,i)=>({text,i,score:score(text)})).sort((a,b)=>b.score-a.score||a.i-b.i);
+  const ordered=s.lines.map((text,i)=>({text,i,score:relevance(text)})).sort((a,b)=>b.score-a.score||a.i-b.i);
   output.push(s.title,...ordered.map(x=>x.text),'');
  }
  for(const s of other){
+  // For project portfolios, move COMPLETE project blocks rather than isolated
+  // sentences. A project heading and its description must always stay together.
+  if(/PROJECTS|PROJETOS/i.test(s.title)){
+   const blocks:{lines:string[];index:number;score:number}[]=[];
+   const isProjectHeading=(line:string)=>/\s[—–-]\s/.test(line)&&line.length<105&&!/[.!?]$/.test(line);
+   for(const line of s.lines){
+    if(isProjectHeading(line)||blocks.length===0){
+     blocks.push({lines:[line],index:blocks.length,score:0});
+    }else blocks[blocks.length-1].lines.push(line);
+   }
+   for(const block of blocks)block.score=relevance(block.lines.join(' '));
+   blocks.sort((a,b)=>b.score-a.score||a.index-b.index);
+   output.push(s.title,...blocks.flatMap(b=>b.lines),'');
+   continue;
+  }
   // Preserve chronological experience, employer names, dates, and all original claims.
   // Only reorder independent bullet points inside a contiguous bullet list.
   const ordered:string[]=[];
