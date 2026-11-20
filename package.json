@@ -13,7 +13,8 @@
     "react-dom": "^19.0.0",
     "mammoth": "^1.9.0",
     "pdf-parse": "^1.1.1",
-    "docx": "^9.5.0"
+    "docx": "^9.5.0",
+    "pdfjs-dist": "4.10.38"
   },
   "devDependencies": {
     "typescript": "^5.8.0",
