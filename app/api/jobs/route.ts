@@ -63,16 +63,16 @@ async function verifyJob(job:Job):Promise<Job|null>{
 export async function GET(req:NextRequest){
  const q=(req.nextUrl.searchParams.get('q')||'').trim().toLowerCase().slice(0,80);
  const mode=req.nextUrl.searchParams.get('mode')||'all';
- const genericQuery=/^(vibe\\s*cod(e|ing|er|ers)?|vibecod(e|ing|er|ers)?)$/i.test(q);
- const broadRole=/full[\\s-]?stack|software|developer|engineer|programador|desenvolvedor|ai\\s*(?:builder|developer|engineer)|automation|automação|no[\\s-]?code|low[\\s-]?code/i.test(q);
+ const genericQuery=/^(vibe\s*cod(e|ing|er|ers)?|vibecod(e|ing|er|ers)?)$/i.test(q);
+ const broadRole=/full[\s-]?stack|software|developer|engineer|programador|desenvolvedor|ai\s*(?:builder|developer|engineer)|automation|automação|no[\s-]?code|low[\s-]?code/i.test(q);
  const matchesQuery=(j:Job)=>{
   if(!q||genericQuery)return true;
   const title=j.title.toLowerCase(),body=(j.title+' '+j.description).toLowerCase();
   if(broadRole){
    // Job titles are synonyms, not a mandatory exact phrase.
-   return engineeringRole.test(title)||explicitRole.test(title)||/\\b(?:developer|engineer|builder|automation|automação|desenvolvedor)\\b/i.test(title);
+   return engineeringRole.test(title)||explicitRole.test(title)||/\b(?:developer|engineer|builder|automation|automação|desenvolvedor)\b/i.test(title);
   }
-  const terms=q.replace(/vibe[\\s-]?cod(?:e|ing|er|ers)?/gi,'').trim().split(/\\s+/).filter(x=>x.length>2);
+  const terms=q.replace(/vibe[\s-]?cod(?:e|ing|er|ers)?/gi,'').trim().split(/\s+/).filter(x=>x.length>2);
   return terms.length===0||terms.some(term=>body.includes(term));
  };
  const country=(req.nextUrl.searchParams.get('country')||'world').toLowerCase();
