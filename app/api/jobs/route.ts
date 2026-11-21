@@ -9,9 +9,9 @@ const sources=[
  {name:'VibeCodeJobs IO',url:'https://vibecodejobs.io/jobs'},
  {name:'AI Jobs Map',url:'https://aijobsmap.com/pt-br/tools/vibe-coding'}
 ];
-const engineeringRole=/\b(?:full[\s-]?stack|software\s+(?:engineer|developer)|ai\s+(?:engineer|developer|builder)|automation\s+(?:engineer|developer|specialist)|vibe[\s-]?cod(?:er|ing|e))\b/i;
+const engineeringRole=/\b(?:full[\s-]?stack|software\s+(?:engineer|developer)|ai\s+(?:engineer|developer|builder)|automation\s+(?:engineer|developer|specialist)|web\s+developer|application\s+developer|app\s+builder|no[\s-]?code|low[\s-]?code|vibe[\s-]?cod(?:er|ing|e))\b/i;
 const explicitVibe=/\bvibe[\s-]?cod(?:e|er|ers|ing)\b/i;
-const explicitRole=/\b(?:vibe[\s-]?cod(?:e|er|ers|ing)|lovable|replit|claude\s*code|cursor\s*ai|bolt\.new)\b/i;
+const explicitRole=/\b(?:vibe[\s-]?cod(?:e|er|ers|ing)|lovable|replit|claude\s*code|cursor(?:\s*ai)?|bolt\.new|windsurf|github\s*copilot|ai.assisted|ai.native|no[\s-]?code|low[\s-]?code)\b/i;
 const builderRole=/\b(?:build|develop|create|prototype|implement|construir|desenvolver|criar|prototipar|implementar)\b/i;
 const weakContext=/\b(?:familiarity|familiar|comfort with|exposure to|nice to have|plus if|bonus|knowledge of|interest in)\b/i;
 const excluded=/account manager|account executive|sales|marketing|recruiter|human resources|data engineer|staff engineer|principal engineer|tech lead|java developer|mulesoft|product manager|program manager|project manager|seo|writer|architect|customer success|business analyst|data analyst|financial analyst|director|vice president|\bvp\b|chief|\bprincipal\b/i;
@@ -51,23 +51,30 @@ async function verifyJob(job:Job):Promise<Job|null>{
   const text=clean((article.length?article:$('body')).text()).slice(0,12000);
   const title=job.title;
   // A mention of AI tools or vibe coding alone is not proof of a Vibe Coder role.
-  if(excluded.test(title)||!engineeringRole.test(title)||!explicitVibe.test(title+' '+text))return null;
-  if(!explicitVibe.test(title)&&!builderRole.test(text))return null;
-  if(!/\b(?:vibe[\s-]?cod(?:e|er|ers|ing))\b/i.test(title)&&!/(?:vibe[\s-]?cod(?:e|er|ers|ing))[^.]{0,130}(?:build|develop|create|prototype|implement|construir|desenvolver|criar|prototipar|implementar)|(?:build|develop|create|prototype|implement|construir|desenvolver|criar|prototipar|implementar)[^.]{0,130}(?:vibe[\s-]?cod(?:e|er|ers|ing))/i.test(text))return null;
+  if(excluded.test(title)||(!engineeringRole.test(title)&&!explicitRole.test(title))||!explicitRole.test(title+' '+text))return null;
+  if(!explicitVibe.test(title)&&!builderRole.test(text)&&!/(?:ai.assisted|ai.native|claude\s*code|lovable|replit|cursor|windsurf|copilot)/i.test(text))return null;
   const locationText=job.location==='Não informado'?'':job.location;
   const location=locationText||clean($('[class*="location"],[class*="Location"]').first().text())||'Não informado';
   const remote=/\b(remote|remoto|worldwide|anywhere)\b/i.test(location);
   const remoteKnown=remote||/\b(on.site|onsite|presencial|hybrid|híbrido)\b/i.test(location);
-  return {...job,description:text,location,remote,remoteKnown,fitScore:explicitVibe.test(title)?95:85};
+  return {...job,description:text,location,remote,remoteKnown,fitScore:explicitVibe.test(title+' '+text)?90:75};
  }catch{return null}finally{clearTimeout(timer)}
 }
 export async function GET(req:NextRequest){
  const q=(req.nextUrl.searchParams.get('q')||'').trim().toLowerCase().slice(0,80);
  const mode=req.nextUrl.searchParams.get('mode')||'all';
- const genericQuery=/^(vibe\s*cod(e|ing|er|ers)?|vibecod(e|ing|er|ers)?)$/i.test(q);
- const roleQuery=/\b(?:full\s*stack|fullstack|software\s*(?:engineer|developer)|ai\s*(?:developer|engineer|builder)|automation\s*(?:specialist|developer|engineer))\b/i.test(q);
- const roleTerms=q.replace(/vibe\s*cod(?:e|ing|er|ers)?/gi,'').trim().split(/\s+/).filter(Boolean);
- const matchesQuery=(j:Job)=>!q||genericQuery||(roleQuery?roleTerms.some(term=>(j.title+' '+j.description).toLowerCase().includes(term)):(j.title+' '+j.description).toLowerCase().includes(q));
+ const genericQuery=/^(vibe\\s*cod(e|ing|er|ers)?|vibecod(e|ing|er|ers)?)$/i.test(q);
+ const broadRole=/full[\\s-]?stack|software|developer|engineer|programador|desenvolvedor|ai\\s*(?:builder|developer|engineer)|automation|automação|no[\\s-]?code|low[\\s-]?code/i.test(q);
+ const matchesQuery=(j:Job)=>{
+  if(!q||genericQuery)return true;
+  const title=j.title.toLowerCase(),body=(j.title+' '+j.description).toLowerCase();
+  if(broadRole){
+   // Job titles are synonyms, not a mandatory exact phrase.
+   return engineeringRole.test(title)||explicitRole.test(title)||/\\b(?:developer|engineer|builder|automation|automação|desenvolvedor)\\b/i.test(title);
+  }
+  const terms=q.replace(/vibe[\\s-]?cod(?:e|ing|er|ers)?/gi,'').trim().split(/\\s+/).filter(x=>x.length>2);
+  return terms.length===0||terms.some(term=>body.includes(term));
+ };
  const country=(req.nextUrl.searchParams.get('country')||'world').toLowerCase();
  const settled=await Promise.allSettled(sources.map(fetchSource));
  const warnings:string[]=[];const all:Job[]=[];
