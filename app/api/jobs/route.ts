@@ -11,15 +11,16 @@ function fitScore(j:Job):number {
  else if(/developer|software|automation|automação|integration|integração|agent builder|workflow|ai engineer/i.test(t))score+=40;
  if(/n8n|lovable|replit|claude code|vibe.cod|ai.assisted development|no.code|low.code/i.test(d))score+=20;
  if(/automation|automação|integrations|integrações|ai agents|agentes de ia|workflow/i.test(d))score+=10;
- if(/marketing|account executive|customer intelligence|sales manager|recruiter|human resources|product marketing/i.test(t))score-=80;
+ if(/marketing|account executive|customer intelligence|sales manager|recruiter|human resources|product marketing|sales representative|sales executive|finance manager|customer success/i.test(t))score-=100;
+ if(/vibe.cod|ai builder|product builder|no.code|low.code|lovable|replit|claude code/i.test(t+' '+d))score+=35;
  return Math.max(0,Math.min(100,score));
 }
-function relevant(j:Job,q:string,profile:boolean) { const hay=(j.title+' '+j.description).toLowerCase();return (!q || hay.includes(q.toLowerCase())) && (!profile || fitScore(j)>=40); }
+function relevant(j:Job,q:string,profile:boolean) { const hay=(j.title+' '+j.description).toLowerCase();return (!q || hay.includes(q.toLowerCase())) && (!profile || fitScore(j)>=65); }
 async function getJSON(url:string):Promise<unknown> { const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),8000);try{const r=await fetch(url,{signal:ctrl.signal,next:{revalidate:1800},headers:{'User-Agent':'ATSInteligente/1.0'}});if(!r.ok)throw Error('Fonte indisponível');return await r.json();}finally{clearTimeout(timer)} }
 export async function GET(req:NextRequest) {
  const q=(req.nextUrl.searchParams.get('q')||'').slice(0,80).trim();
  const mode=req.nextUrl.searchParams.get('mode')||'remote';
- const profile=req.nextUrl.searchParams.get('profile')==='true';
+ const profile=req.nextUrl.searchParams.get('profile')!=='false';
  const country=(req.nextUrl.searchParams.get('country')||'world').toLowerCase().slice(0,60);
  const results=await Promise.allSettled([
   getJSON('https://remotive.com/api/remote-jobs?limit=100'),
@@ -38,5 +39,5 @@ export async function GET(req:NextRequest) {
  const dedup=[...new Map(filtered.map(j=>[(j.title+'|'+j.company).toLowerCase(),j])).values()].sort((a,b)=>fitScore(b)-fitScore(a)).slice(0,100).map(j=>({...j,fitScore:fitScore(j),description:j.description.slice(0,1100)}));
  if(!jobs.length)warnings.push('Nenhuma vaga foi recebida das fontes. Verifique disponibilidade ou bloqueio de acesso.');
  if(jobs.length&&!dedup.length)warnings.push('As fontes retornaram '+jobs.length+' vagas, mas nenhuma passou pelos filtros. Experimente Todas as modalidades, Mundo e sem palavra-chave.');
- return NextResponse.json({jobs:dedup,totalReceived:jobs.length,warnings,checkedAt:new Date().toISOString(),notice:'Localização remota não garante elegibilidade para trabalhar a partir do Brasil. Confirme no anúncio. Fontes públicas; cobertura parcial.'});
+ return NextResponse.json({jobs:dedup,totalReceived:jobs.length,warnings,checkedAt:new Date().toISOString(),notice:'Busca especializada: apenas anúncios com sinais de ferramentas de criação assistida por IA. Fontes públicas generalistas são suplementares; consulte também os painéis especializados indicados. Localização remota não garante elegibilidade no Brasil.'});
 }
