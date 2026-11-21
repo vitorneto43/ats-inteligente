@@ -65,12 +65,15 @@ export async function GET(req:NextRequest){
  const q=(req.nextUrl.searchParams.get('q')||'').trim().toLowerCase().slice(0,80);
  const mode=req.nextUrl.searchParams.get('mode')||'all';
  const genericQuery=/^(vibe\s*cod(e|ing|er|ers)?|vibecod(e|ing|er|ers)?)$/i.test(q);
+ const roleQuery=/\b(?:full\s*stack|fullstack|software\s*(?:engineer|developer)|ai\s*(?:developer|engineer|builder)|automation\s*(?:specialist|developer|engineer))\b/i.test(q);
+ const roleTerms=q.replace(/vibe\s*cod(?:e|ing|er|ers)?/gi,'').trim().split(/\s+/).filter(Boolean);
+ const matchesQuery=(j:Job)=>!q||genericQuery||(roleQuery?roleTerms.some(term=>(j.title+' '+j.description).toLowerCase().includes(term)):(j.title+' '+j.description).toLowerCase().includes(q));
  const country=(req.nextUrl.searchParams.get('country')||'world').toLowerCase();
  const settled=await Promise.allSettled(sources.map(fetchSource));
  const warnings:string[]=[];const all:Job[]=[];
  settled.forEach((r,i)=>{if(r.status==='fulfilled'){all.push(...r.value);if(!r.value.length)warnings.push(sources[i].name+': nenhum anúncio compatível extraído.')}else warnings.push(sources[i].name+': indisponível ou estrutura não reconhecida.');});
  const verified=(await Promise.all(all.map(verifyJob))).filter((j):j is Job=>j!==null);
- const jobs=[...new Map(verified.filter(j=>(!q||genericQuery||(j.title+' '+j.description).toLowerCase().includes(q))&&(mode==='all'||(mode==='remote'?j.remote:(!j.remote&&j.remoteKnown)))&&(country==='world'||(country==='brasil'?/brasil|brazil|worldwide|anywhere|global/i.test(j.location):j.location.toLowerCase().includes(country)))).map(j=>[j.url,j])).values()].sort((a,b)=>b.fitScore-a.fitScore).slice(0,100);
+ const jobs=[...new Map(verified.filter(j=>matchesQuery(j)&&(mode==='all'||(mode==='remote'?j.remote:(!j.remote&&j.remoteKnown)))&&(country==='world'||(country==='brasil'?/brasil|brazil|worldwide|anywhere|global/i.test(j.location):j.location.toLowerCase().includes(country)))).map(j=>[j.url,j])).values()].sort((a,b)=>b.fitScore-a.fitScore).slice(0,100);
  if(!jobs.length)warnings.unshift('Nenhuma vaga de Vibe Coding confirmada pelos filtros atuais. Não exibimos vagas genéricas para preencher a lista.');
  return NextResponse.json({jobs,totalReceived:verified.length,warnings,checkedAt:new Date().toISOString(),notice:'Vagas sem modalidade informada não são consideradas remotas confirmadas. Anúncios ambíguos ou que apenas citam IA são excluídos. Busca diretamente em páginas de sites de Vibe Coding. Extração experimental: sites podem bloquear ou alterar sua estrutura. Verifique os requisitos e a elegibilidade no anúncio original.'});
 }
