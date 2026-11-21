@@ -9,11 +9,12 @@ const sources=[
  {name:'VibeCodeJobs IO',url:'https://vibecodejobs.io/jobs'},
  {name:'AI Jobs Map',url:'https://aijobsmap.com/pt-br/tools/vibe-coding'}
 ];
+const engineeringRole=/\b(?:full[\s-]?stack|software\s+(?:engineer|developer)|ai\s+(?:engineer|developer|builder)|automation\s+(?:engineer|developer|specialist)|vibe[\s-]?cod(?:er|ing|e))\b/i;
 const explicitVibe=/\bvibe[\s-]?cod(?:e|er|ers|ing)\b/i;
 const explicitRole=/\b(?:vibe[\s-]?cod(?:e|er|ers|ing)|lovable|replit|claude\s*code|cursor\s*ai|bolt\.new)\b/i;
 const builderRole=/\b(?:build|develop|create|prototype|implement|construir|desenvolver|criar|prototipar|implementar)\b/i;
 const weakContext=/\b(?:familiarity|familiar|comfort with|exposure to|nice to have|plus if|bonus|knowledge of|interest in)\b/i;
-const excluded=/account manager|account executive|sales|marketing|recruiter|human resources|data engineer|software engineer|staff engineer|principal engineer|tech lead|java developer|mulesoft|product manager|program manager|project manager|seo|writer|architect|customer success|business analyst|data analyst|financial analyst|director|vice president|\bvp\b|chief|\bprincipal\b/i;
+const excluded=/account manager|account executive|sales|marketing|recruiter|human resources|data engineer|staff engineer|principal engineer|tech lead|java developer|mulesoft|product manager|program manager|project manager|seo|writer|architect|customer success|business analyst|data analyst|financial analyst|director|vice president|\bvp\b|chief|\bprincipal\b/i;
 function clean(x:string){return x.replace(/\s+/g,' ').trim().slice(0,1500)}
 async function fetchSource(s:{name:string;url:string}):Promise<Job[]>{
  const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),10000);
@@ -32,7 +33,7 @@ async function fetchSource(s:{name:string;url:string}):Promise<Job[]>{
   const title=clean(a.find('h2,h3,h4').first().text()||context.find('h2,h3,h4').first().text()||a.text()).slice(0,160);
   const description=clean(context.text());
   if(title.length<7||title.length>160||excluded.test(title))return;
-  if(!explicitRole.test(title+' '+description))return;
+  if(!explicitRole.test(title+' '+description)&&!engineeringRole.test(title))return;
   seen.add(url);
   const location=clean(context.find('[class*="location"],[class*="Location"]').first().text())||'Não informado';
   jobs.push({id:s.name+'-'+i,title,company:clean(context.find('[class*="company"],[class*="Company"]').first().text())||'Não informado',location,url,description,source:s.name,published:'',salary:'',remote:/remote|remoto|anywhere|worldwide/i.test(location+' '+description.slice(0,200)),remoteKnown:/remote|remoto|anywhere|worldwide|on.site|presencial|hybrid|híbrido/i.test(location+' '+description.slice(0,200)),fitScore:0});
@@ -50,8 +51,8 @@ async function verifyJob(job:Job):Promise<Job|null>{
   const text=clean((article.length?article:$('body')).text()).slice(0,12000);
   const title=job.title;
   // A mention of AI tools or vibe coding alone is not proof of a Vibe Coder role.
-  if(excluded.test(title)||!explicitVibe.test(title+' '+text))return null;
-  if(!explicitVibe.test(title)&&(!builderRole.test(text)||weakContext.test(text.slice(0,450))))return null;
+  if(excluded.test(title)||!engineeringRole.test(title)||!explicitVibe.test(title+' '+text))return null;
+  if(!explicitVibe.test(title)&&!builderRole.test(text))return null;
   if(!/\b(?:vibe[\s-]?cod(?:e|er|ers|ing))\b/i.test(title)&&!/(?:vibe[\s-]?cod(?:e|er|ers|ing))[^.]{0,130}(?:build|develop|create|prototype|implement|construir|desenvolver|criar|prototipar|implementar)|(?:build|develop|create|prototype|implement|construir|desenvolver|criar|prototipar|implementar)[^.]{0,130}(?:vibe[\s-]?cod(?:e|er|ers|ing))/i.test(text))return null;
   const locationText=job.location==='Não informado'?'':job.location;
   const location=locationText||clean($('[class*="location"],[class*="Location"]').first().text())||'Não informado';
